@@ -1,3 +1,4 @@
+mod metrics;
 mod tag_api;
 mod workers;
 
@@ -9,7 +10,10 @@ use tag_api::TagApi;
 async fn main() -> Result<(), std::io::Error> {
     tracing_subscriber::fmt::init();
 
-    let api_service = OpenApiService::new(TagApi::new(), "Moulinette simulation api", "0.1")
+    let tag_api = TagApi::new();
+    metrics::init(tag_api.get_stats());
+
+    let api_service = OpenApiService::new(tag_api, "Moulinette simulation api", "0.1")
         .server("http://localhost:3000/api");
     let ui = api_service.rapidoc();
 

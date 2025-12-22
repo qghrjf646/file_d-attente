@@ -1,5 +1,5 @@
 use std::{
-    thread::{self, JoinHandle, sleep},
+    thread::{self, sleep},
     time::Duration,
 };
 
@@ -8,15 +8,14 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 // use uuid::Uuid;
 
 const N_WORKERS: u32 = 10;
-const TIME_MULTIPLIER: u32 = 100;
+const TIME_MULTIPLIER: u32 = 10;
 const JOB_DURATION: Duration = Duration::from_mins(5);
 
 /// Workers consume tags at a given interval
+#[derive(Clone)]
 pub struct Workers {
     /// Queue containing the separated tags
     single_tag_output: Receiver<Tag>,
-    #[allow(unused)]
-    workers: Vec<JoinHandle<WorkerStats>>,
 }
 
 struct Worker {
@@ -45,18 +44,20 @@ impl Workers {
         let (single_tag_input, single_tag_output) = unbounded();
         thread::spawn(|| create_tags(tags_request_input, single_tag_input));
 
-        let workers = (0..N_WORKERS)
+        let _workers: Vec<_> = (0..N_WORKERS)
             .map(|_| Worker::spawn(single_tag_output.clone()))
             .collect();
 
-        Self {
-            single_tag_output,
-            workers,
-        }
+        Self { single_tag_output }
     }
 
     pub fn queue_len(&self) -> usize {
         self.single_tag_output.len()
+    }
+
+    pub fn num_workers(&self) -> u32 {
+        // TODO: add variable amount of worker
+        N_WORKERS
     }
 }
 
@@ -68,6 +69,7 @@ impl Worker {
     fn consume(self) -> WorkerStats {
         while let Ok(_next_tag) = self.single_tag_output.recv() {
             // Simulate a job running
+            // TODO: add randomness here
             thread::sleep(JOB_DURATION / TIME_MULTIPLIER);
         }
         WorkerStats {}

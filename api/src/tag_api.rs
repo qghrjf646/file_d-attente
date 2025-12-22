@@ -9,6 +9,7 @@ use poem_openapi::{
 };
 
 use crate::workers::Workers;
+
 pub struct TagApi {
     tags_input: Mutex<Sender<PushTagQuery>>,
     workers: Workers,
@@ -25,6 +26,10 @@ impl TagApi {
             tags_input,
             workers,
         }
+    }
+
+    pub fn get_stats(&self) -> Workers {
+        self.workers.clone()
     }
 
     /// Check Health

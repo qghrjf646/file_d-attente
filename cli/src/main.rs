@@ -40,6 +40,7 @@ enum Commands {
     PushTagManual(PushTagQuery),
     /// Add tags from the csv downloaded from forge's Grafana
     PushTagCsv(UploadForgeCSV),
+    GetStats,
 }
 
 #[tokio::main]
@@ -83,5 +84,6 @@ async fn main() {
             }
         }
         Commands::PushTagCsv(_upload_forge_csv) => todo!(),
+        Commands::GetStats => todo!(),
     }
 }
