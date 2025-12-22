@@ -1,0 +1,11 @@
+[package]
+name = "common"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+humantime = "2.3.0"
+humantime-serde = "1.1.1"
+poem = "3.1.12"
+poem-openapi = { version = "5.1.16", features = ["rapidoc", "uuid", "humantime"] }
+serde = { version = "1.0.228", features = ["derive"] }

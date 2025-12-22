@@ -1,0 +1,13 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { version = "0.1.0", path = "../common" }
+humantime = "2.3.0"
+log = "0.4.29"
+poem = "3.1.12"
+poem-openapi = { version = "5.1.16", features = ["humantime", "rapidoc", "uuid"] }
+tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread"] }
+tracing-subscriber = "0.3.22"
