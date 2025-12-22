@@ -85,6 +85,7 @@ dependencies = [
  "metrics-exporter-prometheus",
  "poem",
  "poem-openapi",
+ "rand",
  "tokio",
  "tracing-subscriber",
  "uuid",

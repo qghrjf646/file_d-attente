@@ -21,7 +21,7 @@
             rust-analyzer
             rustc
             rustfmt
-            irust
+            evcxr
           ];
         };
       }
