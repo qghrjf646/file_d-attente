@@ -143,6 +143,9 @@ EventType = Literal[
 ]
 
 
+BackupStrategy = Literal["none", "random", "systematic"]
+
+
 @dataclass(order=True)
 class _Event:
 	t: float
@@ -162,6 +165,7 @@ def simulate_waterfall(
 	ks: int | None = None,
 	kf: int | None = None,
 	backup_probability: float = 0.0,
+	backup_strategy: BackupStrategy | None = None,
 ) -> tuple[RunMetrics, list[JobRecord]]:
 	"""Two-stage waterfall (execution then send).
 
@@ -174,10 +178,14 @@ def simulate_waterfall(
 	- `ks`: max waiting room for stage 1 (None => infinite). Total stage-1 system capacity = exec_servers + ks.
 	- `kf`: max waiting room for stage 2 (None => infinite). Total stage-2 system capacity = 1 + kf.
 
+	Backup strategies:
+	- systematic: backup every accepted job after stage 1 (before attempting stage 2)
+	- random: backup each accepted job after stage 1 with probability `backup_probability`
+	- none: never backup
+
 	Losses:
 	- If stage-1 full: arrival refused (push tag error)
-	- If stage-2 full: result refused -> blank page. With backup_probability > 0, result is backed up with
-	  that probability before being sent, preventing *permanent* blank pages.
+	- If stage-2 full: result refused -> blank page. If a backup exists, the blank page is not permanent.
 	"""
 	if horizon <= 0:
 		raise ValueError("horizon must be > 0")
@@ -193,6 +201,10 @@ def simulate_waterfall(
 		raise ValueError("kf must be >= 0 or None")
 	if not (0.0 <= backup_probability <= 1.0):
 		raise ValueError("backup_probability must be in [0, 1]")
+	if backup_strategy is None:
+		backup_strategy = "random" if backup_probability > 0 else "none"
+	if backup_strategy not in ("none", "random", "systematic"):
+		raise ValueError("backup_strategy must be one of: none, random, systematic")
 
 	rng = random.Random(seed)
 	event_seq = 0
@@ -291,7 +303,7 @@ def simulate_waterfall(
 			s2_start_t[jid] = None
 			s2_end_t[jid] = None
 			stage2_refused[jid] = False
-			backed_up[jid] = rng.random() < backup_probability
+			backed_up[jid] = False
 			lost_result[jid] = False
 
 			cap1 = stage1_system_capacity()
@@ -310,11 +322,16 @@ def simulate_waterfall(
 			s1_end_t[jid] = now
 			try_start_s1()
 
+			# Decide/write backup at the end of stage 1 (before attempting stage 2)
+			if backup_strategy == "systematic":
+				backed_up[jid] = True
+			elif backup_strategy == "random":
+				backed_up[jid] = rng.random() < backup_probability
+
 			cap2 = stage2_system_capacity()
 			if cap2 is not None and stage2_size() >= cap2:
 				stage2_refused[jid] = True
-				if not backed_up[jid]:
-					lost_result[jid] = True
+				lost_result[jid] = not backed_up[jid]
 			else:
 				s2_queue.append(jid)
 				try_start_s2()
@@ -389,6 +406,8 @@ def simulate_channels_and_dams(
 	send_service_rate: float,
 	ks: int | None,
 	kf: int | None,
+	backup_probability: float = 0.0,
+	backup_strategy: BackupStrategy | None = None,
 	populations: list[Population],
 	dam_tb: float | None = None,
 	dam_population: str = "ING",
@@ -418,6 +437,12 @@ def simulate_channels_and_dams(
 		raise ValueError("ks must be >= 0 or None")
 	if kf is not None and kf < 0:
 		raise ValueError("kf must be >= 0 or None")
+	if not (0.0 <= backup_probability <= 1.0):
+		raise ValueError("backup_probability must be in [0, 1]")
+	if backup_strategy is None:
+		backup_strategy = "random" if backup_probability > 0 else "none"
+	if backup_strategy not in ("none", "random", "systematic"):
+		raise ValueError("backup_strategy must be one of: none, random, systematic")
 	if not populations:
 		raise ValueError("populations must be non-empty")
 	if dam_tb is not None and dam_tb <= 0:
@@ -549,7 +574,6 @@ def simulate_channels_and_dams(
 			next_job_id += 1
 			jid = next_job_id
 			arrival_t[jid] = now
-			population_of[jid] = pop_name
 			accepted[jid] = True
 			refused_reason[jid] = ""
 			s1_start_t[jid] = None
@@ -559,6 +583,7 @@ def simulate_channels_and_dams(
 			stage2_refused[jid] = False
 			backed_up[jid] = False
 			lost_result[jid] = False
+			population_of[jid] = pop_name  # FIX: always register jid's population
 
 			if pop_name == dam_population and not is_dam_open(now):
 				accepted[jid] = False
@@ -589,10 +614,16 @@ def simulate_channels_and_dams(
 			s1_end_t[jid] = now
 			try_start_s1()
 
+			# Decide/write backup at the end of stage 1 (before attempting stage 2)
+			if backup_strategy == "systematic":
+				backed_up[jid] = True
+			elif backup_strategy == "random":
+				backed_up[jid] = rng.random() < backup_probability
+
 			cap2 = stage2_system_capacity()
 			if cap2 is not None and stage2_size() >= cap2:
 				stage2_refused[jid] = True
-				lost_result[jid] = True
+				lost_result[jid] = not backed_up[jid]
 			else:
 				s2_queue.append(jid)
 				try_start_s2()
@@ -651,4 +682,46 @@ def simulate_channels_and_dams(
 		)
 
 	return metrics_by_pop, jobs
+
+
+def waterfall_server_metrics(jobs: list[JobRecord], horizon: float, exec_servers: int) -> dict[str, float]:
+    # Utilisation par intégrale des temps de service observés
+    s1_busy = 0.0
+    s2_busy = 0.0
+    backups_written = 0
+    for j in jobs:
+        if not j.accepted:
+            continue
+        if j.backed_up:
+            backups_written += 1
+        if j.s1_start_t is not None and j.s1_end_t is not None:
+            s1_busy += max(0.0, min(j.s1_end_t, horizon) - max(j.s1_start_t, 0.0))
+        if (not j.stage2_refused) and j.s2_start_t is not None and j.s2_end_t is not None:
+            s2_busy += max(0.0, min(j.s2_end_t, horizon) - max(j.s2_start_t, 0.0))
+
+    s1_util = s1_busy / (max(1, exec_servers) * horizon)
+    s2_util = s2_busy / (1.0 * horizon)
+
+    series = waterfall_series_df(jobs, horizon)
+    avg = (
+        series.groupby('series', as_index=False)
+        .apply(lambda g: time_average_step(g[['t', 'x']], horizon), include_groups=False)
+        .reset_index()
+    )
+    # pandas >=2.0: .apply returns DataFrame with column None, not 0
+    if None in avg.columns:
+        avg = avg.rename(columns={None: 'time_avg'})
+    elif 0 in avg.columns:
+        avg = avg.rename(columns={0: 'time_avg'})
+    avg_map = dict(zip(avg['series'], avg['time_avg']))
+
+    return {
+        's1_util': float(s1_util),
+        's2_util': float(s2_util),
+        's1_system_timeavg': float(avg_map.get('S1_system', 0.0)),
+        's1_queue_timeavg': float(avg_map.get('S1_queue', 0.0)),
+        's2_system_timeavg': float(avg_map.get('S2_system', 0.0)),
+        's2_queue_timeavg': float(avg_map.get('S2_queue', 0.0)),
+        'backups_written': float(backups_written),
+    }
 
