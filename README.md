@@ -19,5 +19,11 @@ cargo run --bin cli push-tag-csv --file ./Pipelines-data-2025-12-21\ 16_53_00.cs
 docker compose up -d
 ```
 
-Grafana now runs at: http://localhost:4000
-Prometheus now runs at: http://localhost:9090
+| Service    | Address               |
+|------------|-----------------------|
+| Api doc    | http://localhost:3000 |
+| Grafana    | http://localhost:4000 |
+| Prometheus | http://localhost:9090 |
+
+### Preview
+<img width="1904" height="1183" alt="Grafana dashboard screenshot" src="https://github.com/user-attachments/assets/4aedf78c-eaf0-4aee-ad2e-195098ccfa10" />
