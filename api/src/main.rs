@@ -1,4 +1,5 @@
 mod tag_api;
+mod workers;
 
 use poem::{Route, Server, listener::TcpListener};
 use poem_openapi::OpenApiService;
@@ -8,7 +9,7 @@ use tag_api::TagApi;
 async fn main() -> Result<(), std::io::Error> {
     tracing_subscriber::fmt::init();
 
-    let api_service = OpenApiService::new(TagApi, "Moulinette simulation api", "0.1")
+    let api_service = OpenApiService::new(TagApi::new(), "Moulinette simulation api", "0.1")
         .server("http://localhost:3000/api");
     let ui = api_service.rapidoc();
 

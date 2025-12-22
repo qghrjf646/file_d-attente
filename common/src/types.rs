@@ -8,7 +8,7 @@ use serde::Serialize;
 #[derive(Debug, Object, Serialize)]
 pub struct PushTagQuery {
     /// Number of tags to add to the queue
-    pub num_tags: u64,
+    pub num_tags: u32,
     /// Time it will take to add the tags, at a regular interval
     #[serde(default)]
     #[serde(with = "humantime_serde")]

@@ -10,7 +10,7 @@ const BACKEND_URL: &str = "http://localhost:3000/api";
 struct PushTagQuery {
     /// Number of tags to add to the queue
     #[arg(long)]
-    num_tags: u64,
+    num_tags: u32,
     /// Time it will take to add the tags, at a regular interval
     #[arg(long)]
     interval: Option<Duration>,
@@ -71,7 +71,6 @@ async fn main() {
                 .json(&push_tag_query)
                 .send()
                 .await;
-            dbg!(&response);
             match response {
                 Ok(_) => println!(
                     "Successfully sent {} tags over the next {}",
