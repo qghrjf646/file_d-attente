@@ -1,0 +1,30 @@
+# TODO: remove network_mode: host when api is dockerized
+name: ero2
+services:
+    grafana:
+        container_name: grafana
+        image: grafana/grafana
+        environment:
+          - GF_SERVER_HTTP_PORT=4000
+        ports:
+          - 4000:4000
+        volumes:
+          - grafana-data:/var/lib/grafana
+          - ./config/grafana.ini:/etc/grafana/grafana.ini:ro
+        network_mode: host
+    prometheus:
+      container_name: prometheus
+      image: prom/prometheus
+      command:
+        - "--config.file=/etc/prometheus/prometheus.yml"
+        - "--storage.tsdb.path=/prometheus"
+      ports:
+        - 127.0.0.1:9090:9090
+      volumes:
+        - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+        - prometheus-data:/prometheus
+      network_mode: host
+
+volumes:
+  prometheus-data:
+  grafana-data:
