@@ -1,0 +1,570 @@
+\documentclass[a4paper,12pt]{report}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+% --- Configuration des liens ---
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    filecolor=magenta,      
+    urlcolor=blue,
+}
+
+% --- Configuration Code ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% --- Mise en page des chapitres (MODIFIÉ POUR AFFICHER LES NUMÉROS) ---
+% "hang" met le numéro et le titre sur la même ligne (ex: 1. Introduction)
+\titleformat{\chapter}[hang]
+  {\normalfont\bfseries\Huge}{\thechapter.}{20pt}{\Huge}
+
+% --- En-têtes et Pieds de page ---
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textbf{Projet ERO2}}
+\lhead{Analyse de la Moulinette}
+\cfoot{\thepage}
+
+\begin{document}
+
+% =============================================================================
+% PAGE DE GARDE PERSONNALISÉE
+% =============================================================================
+\begin{titlepage}
+    \centering
+    % Partie Haute : École et Projet
+    
+    {\large Projet ERO2}\\[2.0cm]
+    
+    % Partie Centrale : Titre
+    {\Huge \textbf{Analyse et Optimisation de}}\\[0.5cm]
+    {\Huge \textbf{l'Infrastructure de Correction}}\\[0.5cm]
+    {\LARGE \textit{"La Moulinette"}}\\[2.5cm]
+    
+    % Partie Basse : Auteurs et Date
+    \large
+    \textbf{Rapport}\\[1.0cm]
+
+    \textbf{Auteurs - Groupe Sebastian Sayez :} \\[0.5cm]
+    Aniss Outaleb \\
+    Yahya Ahachim \\
+    Alexis Petignat \\
+    Oscar Le Dauphin \\
+    Matthew Banawa \\
+    Alexis Le Trung
+    
+    \vfill
+    
+    {\large \today}
+    
+\end{titlepage}
+
+% =============================================================================
+% RESUME ET SOMMAIRE
+% =============================================================================
+
+% Numérotation romaine pour les pages liminaires
+\pagenumbering{roman} 
+
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Ce rapport présente une analyse approfondie de l'infrastructure de correction de l'école "la moulinette" sous l'angle de la théorie des files d'attente. Face aux problèmes récurrents de saturation et de perte de résultats, nous avons développé un simulateur à événements discrets pour modéliser le comportement du système.
+
+
+
+\tableofcontents
+
+\newpage
+
+% =============================================================================
+% CORPS DU RAPPORT
+% =============================================================================
+
+% Numérotation arabe pour le contenu
+\pagenumbering{arabic} 
+
+\chapter{Introduction}
+
+\section{Contexte du Projet}
+L'infrastructure de correction automatique, appelée "la moulinette", est un composant important de la pédagogie à l'EPITA. Elle permet l'évaluation continue du code étudiant via l'exécution de tests unitaires. Cependant, lors des pics de charge (rendus de projets, piscines...), le système montre ses limites : temps d'attente prohibitifs, timeouts, et parfois perte totale du résultat de l'évaluation.
+
+\section{Problématique}
+L'objectif de cette étude est double :
+\begin{itemize}
+    \item Diagnostiquer les goulots d'étranglement du système actuel via une modélisation mathématique et informatique.
+    \item Concevoir une nouvelle architecture de gestion des files d'attente capable de supporter la charge tout en assurant une équité entre les différentes populations d'étudiants (ING, PREPA).
+\end{itemize}
+
+L'analyse s'appuie sur deux scénarios d'étude : le modèle "Waterfall" et le modèle "Channels \& Dams".
+
+
+\chapter{Modèle Waterfall}
+
+Le modèle Waterfall structure le traitement en deux étages séquentiels : les requêtes traversent d'abord une file d'entrée pour être traitées par les serveurs, puis transitent par une file de sortie avant leur restitution finale.
+
+\section{Définitions et Paramètres}
+Les résultats suivants sont issus de simulations numériques couvrant un large spectre de configurations. 
+\begin{itemize}
+    \item \textbf{Flux ($\lambda$)} : Taux moyen d'arrivée des requêtes.
+    \item \textbf{Serveurs} : $K$ unités d'exécution ($\mu_s$) suivies d'un canal d'envoi unique ($\mu_f$).
+    \item \textbf{Taille des files} : $k_s$ (limite d'admission, cause le refus) et $k_f$ (limite sortie, cause la perte).
+    \item \textbf{Sauvegarde} : Probabilité $p_{bk}$ de récupération en cas d'échec interne.
+\end{itemize}
+
+
+
+\section{Analyse Spécifique : Facteurs d'Influence du Temps de Séjour}
+
+Cette section isole l'impact de chaque paramètre sur la latence moyenne ($E[T]$). Le tableau ci-dessous présente un échantillon étendu de 15 configurations  pour mettre en évidence les sensibilités du système.
+
+
+\begin{table}[H]
+\centering
+\caption{Impact des paramètres sur le Temps de Séjour}
+\label{tab:sojourn_sensitivity}
+\begin{tabular}{|c|c|c|c|c||c|}
+\hline
+Flux $\lambda$ & Serveurs K & Sortie $\mu_f$ & Taille $k_s$ & Backup & Temps Séjour (s) \\
+\hline
+4.0 & 2 & 1.0 & 5 & Sys & 5.89 \\
+2.0 & 2 & 1.0 & 5 & Sys & 4.72 \\
+6.0 & 2 & 1.0 & 5 & Sys & 6.07 \\
+4.0 & 1 & 1.0 & 5 & Sys & 8.04 \\
+4.0 & 4 & 1.0 & 5 & Sys & 4.25 \\
+4.0 & 2 & 0.5 & 5 & Sys & 8.63 \\
+4.0 & 2 & 2.0 & 5 & Sys & 4.18 \\
+4.0 & 2 & 1.0 & 0 & Sys & 3.38 \\
+4.0 & 2 & 1.0 & 5 & None & 5.89 \\
+4.0 & 2 & 1.0 & 5 & Random & 5.67 \\
+2.0 & 1 & 1.0 & 5 & Sys & 7.32 \\
+6.0 & 1 & 1.0 & 5 & Sys & 8.00 \\
+6.0 & 4 & 1.0 & 5 & Sys & 4.72 \\
+6.0 & 2 & 2.0 & 5 & Sys & 4.46 \\
+2.0 & 2 & 0.5 & 5 & Sys & 7.62 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Observations et Analyse d'Impact}
+
+L'analyse de cet échantillon permet de dégager les tendances suivantes :
+
+\paragraph{1. Hiérarchie des facteurs}
+La capacité de sortie ($\mu_f$) est le levier le plus puissant. Diviser la sortie par deux (de 1.0 à 0.5) fait grimper la latence à 8.63s, soit le pire résultat observé pour un système à 2 serveurs, dépassant même l'impact d'une réduction du nombre de serveurs d'entrée. À l'inverse, doubler la sortie ($\mu_f=2.0$) réduit le temps de séjour à 4.18s, offrant un gain de performance quasi-identique à celui obtenu en quadruplant les serveurs d'entrée ($K=4 \to 4.25s$).
+
+\paragraph{2. Saturation et Plafond de Performance}
+L'ajout de serveurs ($K$) présente des rendements décroissants. Passer de $K=1$ à $K=2$ offre un gain  (de 8.04s à 5.89s), mais passer à $K=4$ n'apporte qu'un bénéfice marginal si la sortie reste standard. Même en surcharge massive ($\lambda=6$), le temps de séjour avec $K=4$ (4.72s) reste supérieur à celui obtenu par une simple amélioration de la sortie à $\mu_f=2$ (4.46s).
+
+\paragraph{3. Stratégie "Temps Réel"}
+La suppression de la taille d'entrée ($k_s=0$) permet d'atteindre la latence la plus basse du panel (3.38s). Cette configuration force un traitement immédiat ou un rejet, éliminant mécaniquement le temps d'attente en file. C'est la configuration optimale pour des applications sensibles à la latence, au prix d'un taux de rejet plus élevé.
+
+\paragraph{4. Neutralité du Backup}
+Le tableau confirme que la stratégie de backup n'influence pas le temps de séjour des requêtes traitées (5.89s avec ou sans backup). Ce mécanisme agit en parallèle et n'introduit pas de pénalité de latence sur le flux nominal.
+
+
+
+\section{Analyse Spécifique : Facteurs d'Influence du Taux de Refus à l'Entrée}
+
+Cette section isole l'impact de chaque paramètre sur la capacité d'admission du système (Taux de Refus). Le tableau ci-dessous présente un échantillon de 13 configurations.
+
+\begin{table}[H]
+\centering
+\caption{Impact des paramètres sur le Taux de Refus à l'Entrée}
+\label{tab:refusal_sensitivity}
+\begin{tabular}{|c|c|c|c|c||c|}
+\hline
+Flux $\lambda$ & Serveurs K & Sortie $\mu_f$ & Taille $k_s$ & Backup & Taux Refus \\
+\hline
+4.0 & 2 & 1.0 & 5 & Sys & 50.7\% \\
+2.0 & 2 & 1.0 & 5 & Sys & 13.8\% \\
+6.0 & 2 & 1.0 & 5 & Sys & 66.7\% \\
+4.0 & 1 & 1.0 & 5 & Sys & 74.2\% \\
+4.0 & 4 & 1.0 & 5 & Sys & 12.1\% \\
+4.0 & 2 & 1.0 & 0 & Sys & 61.4\% \\
+4.0 & 2 & 0.5 & 5 & Sys & 49.7\% \\
+4.0 & 2 & 2.0 & 5 & Sys & 49.2\% \\
+4.0 & 2 & 1.0 & 5 & None & 50.7\% \\
+6.0 & 1 & 1.0 & 5 & Sys & 82.6\% \\
+6.0 & 4 & 1.0 & 5 & Sys & 34.9\% \\
+2.0 & 1 & 1.0 & 5 & Sys & 49.3\% \\
+2.0 & 4 & 1.0 & 5 & Sys & 0.4\% \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Observations et Analyse d'Impact}
+
+L'analyse de cet échantillon permet de dégager les tendances suivantes concernant la capacité d'admission :
+
+\paragraph{1. Prédominance de la Capacité d'Entrée ($K$)}
+Le nombre de serveurs d'entrée est le levier absolu pour l'accessibilité du système. À charge constante ($\lambda=4.0$), le passage d'une architecture  ($K=1$) à une architecture  ($K=4$) divise le taux de refus par six, le faisant chuter de 74.2\% à 12.1\%. C'est le seul paramètre capable de compenser efficacement une forte charge : là où un serveur unique s'effondre sous un flux massif ($\lambda=6 \to 82.6\%$ de refus), une configuration à 4 serveurs parvient à maintenir un taux d'acceptation significatif.
+
+\paragraph{2. Découplage de la Sortie ($\mu_f$)}
+Contrairement à la latence, le taux de refus à l'entrée se révèle totalement insensible à la capacité de sortie. Faire varier la vitesse du canal d'envoi de $\mu_f=0.5$ (lent) à $\mu_f=2.0$ (rapide) ne modifie le taux de refus que de manière anecdotique (variation inférieure à 1 point). Le goulot d'étranglement de l'admission est strictement situé en amont ; ainsi, optimiser l'aval n'a aucun effet  sur la capacité du système à accepter de nouvelles requêtes.
+
+\paragraph{3. Impact de la Taille de File ($k_s$)}
+La taille de file d'entrée ($k_s$) joue un rôle de lissage indispensable. Un  ($k_s=0$) provoque une hausse  immédiate du taux de refus de plus de 10 points (61.4\% contre 50.7\%). Sans cette capacité de stockage temporaire, le système perd sa faculté à absorber les pics stochastiques d'arrivées, forçant un rejet immédiat dès que les serveurs sont occupés.
+
+\paragraph{4. Saturation Non-Linéaire}
+La dégradation de l'accès n'est pas proportionnelle à l'augmentation du flux. Avec 2 serveurs, le passage d'un flux léger ($\lambda=2.0$) à un flux moyen ($\lambda=4.0$) ne double pas les rejets mais provoque une explosion du taux, qui passe de 13.8\% à 50.7\%. Cette transition brutale indique que le système ne se dégrade pas progressivement, mais bascule radicalement vers un régime de saturation dès que la demande excède la capacité nominale de traitement ($K \cdot \mu_s$).
+
+\section{Analyse Spécifique : Facteurs d'Influence des Pertes}
+
+Cette section distingue deux types de pertes :
+\begin{itemize}
+    \item \textbf{Page Blanche} : Résultats jetés car la file de sortie ($k_f$) est pleine.
+    \item \textbf{Page Blanche Permanente} : Résultats définitivement perdus après échec ou absence de mécanisme de sauvegarde.
+\end{itemize}
+
+Le tableau ci-dessous présente un échantillon de 15 configurations illustrant l'impact des paramètres sur ces deux métriques.
+
+\begin{table}[H]
+\centering
+\caption{Impact des paramètres sur les Taux de Pertes}
+\label{tab:blank_sensitivity}
+\begin{tabular}{|c|c|c|c|c||c|c|}
+\hline
+Flux $\lambda$ & Serveurs K & Sortie $\mu_f$ & File $k_s$ & Backup & Pg. Blanche & Pg. Bl. Perm. \\
+\hline
+4.0 & 2 & 1.0 & 5 & Sys & 52.7\% & 0.0\% \\
+2.0 & 2 & 1.0 & 5 & Sys & 47.0\% & 0.0\% \\
+6.0 & 2 & 1.0 & 5 & Sys & 52.2\% & 0.0\% \\
+4.0 & 2 & 0.5 & 5 & Sys & 73.8\% & 0.0\% \\
+4.0 & 2 & 2.0 & 5 & Sys & 24.8\% & 0.0\% \\
+4.0 & 1 & 1.0 & 5 & Sys & 26.6\% & 0.0\% \\
+4.0 & 4 & 1.0 & 5 & Sys & 71.0\% & 0.0\% \\
+4.0 & 2 & 1.0 & 5 & None & 52.7\% & 52.7\% \\
+4.0 & 2 & 1.0 & 5 & Random & 51.6\% & 25.2\% \\
+4.0 & 2 & 1.0 & 0 & Sys & 39.9\% & 0.0\% \\
+6.0 & 4 & 1.0 & 5 & Sys & 73.9\% & 0.0\% \\
+6.0 & 4 & 2.0 & 5 & Sys & 51.9\% & 0.0\% \\
+6.0 & 2 & 0.5 & 5 & None & 74.1\% & 74.1\% \\
+2.0 & 1 & 0.5 & 5 & Sys & 50.6\% & 0.0\% \\
+4.0 & 4 & 0.5 & 5 & Sys & 85.0\% & 0.0\% \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Observations et Analyse d'Impact}
+
+L'analyse de cet échantillon permet de dégager les tendances suivantes :
+
+\paragraph{1. La sortie ($\mu_f$) comme régulateur de Page Blanche}
+La capacité du canal de sortie est le déterminant principal du taux de Page Blanche. Une sortie restreinte ($\mu_f=0.5$) provoque un engorgement immédiat, faisant exploser le taux de Pages Blanches à 73.8\% (pour $K=2$). À l'inverse, doubler la capacité de sortie ($\mu_f=2.0$) permet de drainer efficacement les résultats produits, réduisant ce taux à 24.8\%. C'est le levier le plus direct pour réduire les Pages Blanches.
+
+\paragraph{2. Le paradoxe de la puissance de calcul ($K$)}
+Augmenter le nombre de serveurs sans ajuster la sortie est contre-productif. Passer de $K=1$ à $K=4$ (avec $\mu_f=1.0$) fait bondir le taux de Page Blanche de 26.6\% à 71.0\%. En augmentant la capacité de traitement en amont, on déplace le goulot d'étranglement vers l'aval, transformant des requêtes qui auraient dû être refusées à l'entrée en travail inutile qui sature la file de sortie.
+
+\paragraph{3. Découplage par le Backup}
+La stratégie de sauvegarde agit comme un filtre absolu entre la Page Blanche et la Page Blanche Permanente.
+Avec un backup systématique (\texttt{Sys}), le taux de Page Blanche Permanente est maintenu à 0.0\% quelle que soit la sévérité de la saturation (même à 85\% de Pages Blanches). À l'inverse, sans backup (\texttt{None}), la Page Blanche Permanente est strictement égale à la Page Blanche. Le backup ne résout pas le problème de saturation, il le masque en transformant une perte définitive en coût opérationnel.
+
+\paragraph{4. Saturation et Déséquilibre}
+La comparaison des configurations révèle que les taux de Page Blanche les plus élevés (85.0\%) surviennent lorsque le système est déséquilibré ($K=4$ serveurs puissants face à une sortie faible $\mu_f=0.5$). Dans ce cas de figure, le système accepte massivement les requêtes pour les détruire juste après traitement. Pour minimiser les Pages Blanches, il est préférable d'avoir un système équilibré ($K=1, \mu_f=1 \to 26.6\%$) plutôt qu'un système sur-dimensionné en amont.
+
+\section{Analyse Spécifique : Occupation des Files et Charge du Système}
+
+Cette section examine l'encombrement du système, c'est-à-dire le nombre de requêtes présentes simultanément. Elle analyse la répartition entre :
+\begin{itemize}
+    \item \textbf{Étage 1 (Entrée)} : Nombre de requêtes en attente ($L_{q1}$) + Requêtes en cours de traitement = Occupation Totale 1 ($L_{s1}$).
+    \item \textbf{Étage 2 (Sortie)} : Nombre de requêtes en attente ($L_{q2}$) + Requêtes en cours d'envoi = Occupation Totale 2 ($L_{s2}$).
+\end{itemize}
+Le tableau ci-dessous présente un échantillon de 12 configurations pour visualiser où les requêtes s'accumulent.
+
+\begin{table}[H]
+\centering
+\caption{Nombre moyen de requêtes en Attente ($L_q$) et au Total ($L_s$)}
+\label{tab:queue_sensitivity}
+\begin{tabular}{|c|c|c|c|c||c|c|c|c|}
+\hline
+$\lambda$ & K & $\mu_f$ & $k_s$ & Backup & Attente 1 ($L_{q1}$) & Total 1 ($L_{s1}$) & Attente 2 ($L_{q2}$) & Total 2 ($L_{s2}$) \\
+\hline
+4.0 & 2 & 1.0 & 5 & Sys & 3.87 & 5.88 & 1.19 & 2.15 \\
+2.0 & 2 & 1.0 & 5 & Sys & 1.95 & 3.76 & 1.10 & 2.07 \\
+6.0 & 2 & 1.0 & 5 & Sys & 4.27 & 6.29 & 1.19 & 2.13 \\
+4.0 & 1 & 1.0 & 5 & Sys & 4.39 & 5.42 & 0.74 & 1.54 \\
+4.0 & 4 & 1.0 & 5 & Sys & 1.72 & 5.33 & 1.43 & 2.40 \\
+4.0 & 2 & 0.5 & 5 & Sys & 3.84 & 5.85 & 1.51 & 2.49 \\
+4.0 & 2 & 2.0 & 5 & Sys & 3.82 & 5.83 & 0.69 & 1.52 \\
+4.0 & 2 & 1.0 & 0 & Sys & 0.00 & 1.39 & 1.07 & 1.99 \\
+4.0 & 2 & 1.0 & 5 & None & 3.87 & 5.88 & 1.19 & 2.15 \\
+6.0 & 4 & 1.0 & 5 & Sys & 3.26 & 7.19 & 1.45 & 2.45 \\
+6.0 & 2 & 2.0 & 5 & Sys & 4.24 & 6.27 & 0.68 & 1.53 \\
+2.0 & 1 & 1.0 & 5 & Sys & 3.84 & 4.88 & 0.65 & 1.49 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Observations et Analyse d'Impact}
+
+L'analyse de la répartition des requêtes (files d'attente et présence totale) met en évidence les dynamiques suivantes :
+
+\paragraph{1. Le Déplacement des requêtes}
+L'augmentation du nombre de serveurs ($K$) ne réduit pas le nombre total de requêtes, elle les pousse vers la sortie.
+En comparant la configuration $K=1$ à $K=4$ pour un flux constant ($\lambda=4.0$), on observe un basculement :
+\begin{itemize}
+    \item En amont, la file 1 se vide, passant de saturation ($L_{q1}=4.39$) à une situation fluide ($L_{q1}=1.72$).
+    \item En aval, la file 2 s'engorge, le nombre de requêtes en attente doublant presque (de $0.74$ à $1.43$).
+\end{itemize}
+L'accumulation se déplace de l'entrée vers la sortie.
+
+\paragraph{2. Indépendance des Étages}
+Le nombre de personnes attendant à la file 2 ne dépend pas de la vitesse de la file 1, mais uniquement de la vitesse de sortie.
+Si l'on fait varier la vitesse de sortie de $\mu_f=0.5$ à $\mu_f=2.0$, la file 2 se vide (passant de $1.51$ à $0.69$ requêtes), mais la file 1 reste pleine avec environ $3.8$ requêtes. Améliorer la fin du processus ne réduit pas l'attente au début.
+
+\paragraph{3. Remplissage de la file d'Entrée}
+La file 1 encaisse directement l'augmentation du flux d'arrivée.
+À faible flux ($\lambda=2.0$), la file est à moitié remplie ($1.95$ requêtes). Dès que le flux est fort ($\lambda=6.0$), la file est quasi-pleine ($4.27$ requêtes sur 5 places disponibles). La première file devient un lieu de stockage pur quand la demande est trop forte.
+
+\paragraph{4. Neutralité du Backup sur l'Occupation}
+Le mécanisme de sauvegarde n'ajoute personne dans les files d'attente principales.
+Les chiffres montrent que le nombre de requêtes présentes est exactement le même avec Backup (\texttt{Sys}) ou sans Backup (\texttt{None}). Les sauvegardes sont gérées en parallèle et n'augmentent pas l'encombrement visible du système.
+
+
+\chapter{Channels \& Dams}
+
+L'hétérogénéité des tâches est une source majeure d'inefficacité. Les étudiants ING (nombreux, tâches courtes) entrent en compétition avec les étudiants PREPA (rares, tâches longues).
+
+\section{Définitions et Paramètres : Scénario Canaux et Barrages}
+
+\begin{itemize}
+    \item \textbf{Populations ($\lambda$)} : Le système traite deux flux de requêtes concurrents :
+    \begin{itemize}
+        \item \textit{ING} (Ingénieurs) : Flux principal rapide ($\lambda=3.0$, $\mu_s=1.5$).
+        \item \textit{PREPA} (Prépas) : Flux secondaire plus lent ($\lambda=0.6$, $\mu_s=0.5$).
+    \end{itemize}
+
+    \item \textbf{Politique d'Ordonnancement} : La règle de gestion de la priorité d'accès aux serveurs :
+    \begin{itemize}
+        \item \texttt{fifo} : Premier arrivé, premier servi (aucune distinction entre populations).
+        \item \texttt{priority\_ing} : Les requêtes \textit{ING} passent avant les \textit{PREPA} dans la file d'attente.
+        \item \texttt{split\_servers} : Réservation de ressources (Partitionnement). $K-1$ serveurs sont dédiés aux \textit{ING}, et 1 serveur unique est réservé aux \textit{PREPA}.
+    \end{itemize}
+
+    \item \textbf{Barrage Temporel ($t_b$)} : Un mécanisme de régulation dynamique appliqué uniquement à la population \textit{ING}. Si une requête \textit{ING} attend plus de $t_b$ secondes, elle est éjecté du système pour désengorger la file.
+
+\end{itemize}
+
+\section{Analyse Spécifique : Facteurs d'Influence du Temps de Séjour}
+
+Cette section évalue le temps de séjour pour les deux populations (\textit{ING, PREPA}). Elle met en lumière l'impact des politiques d'ordonnancement, des mécanismes de rejet (Barrage $t_b$) et des paramètres des files.
+
+Le tableau ci-dessous présente un échantillon de 11 configurations clés pour illustrer ces dynamiques.
+
+\begin{table}[H]
+\centering
+\caption{Temps de Séjour selon la Politique et les Paramètres}
+\label{tab:sojourn_multi}
+\begin{tabular}{|c|c|c|c|c||c|}
+\hline
+Serveurs $K$ & Sortie $\mu_f$ & Barrage $t_b$ & Politique & Population & Temps Séjour (s) \\
+\hline
+2 & 1.0 & None & Fifo & ING & 9.98s \\
+2 & 1.0 & None & Fifo & PREPA & 10.80s \\
+\hline
+2 & 1.0 & None & Priority ING & ING & 6.99s \\
+2 & 1.0 & None & Priority ING & PREPA & 24.70s \\
+\hline
+2 & 1.0 & None & Split & ING & 11.54s \\
+2 & 1.0 & None & Split & PREPA & 10.36s \\
+\hline
+2 & 1.0 & 30.0s & Fifo & ING & 8.55s \\
+2 & 1.0 & 10.0s & Fifo & ING & 7.69s \\
+\hline
+4 & 1.0 & None & Fifo & ING & 6.74s \\
+2 & 2.0 & None & Fifo & ING & 6.63s \\
+2 & 1.0 & 10.0s & Priority ING & ING & 6.26s \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Observations et Analyse d'Impact}
+
+\paragraph{1. Le Coût de la priorité}
+En accordant la priorité absolue aux \textit{ING}, leur temps de séjour chute drastiquement de 9.98s à 6.99s (gain de 30\%). Cependant, ce gain se paie au prix fort pour la population secondaire \textit{PREPA}, dont le temps d'attente explose à 24.70s (+130\%). La priorité ne crée pas de temps, elle le redistribue violemment.
+
+\paragraph{2. L'inefficacité du Partitionnement}
+La stratégie \texttt{Split} se révèle contre-productive dans ce contexte de charge asymétrique.
+En réservant 1 serveur aux \textit{PREPA} (faible flux) et seulement $K-1=1$ serveur aux \textit{ING} (flux dominant), on crée artificiellement un goulot d'étranglement pour les \textit{ING} (11.54s, soit pire que le Fifo).
+
+\paragraph{3. L'effet du Barrage ($t_b$)}
+Le mécanisme de barrage temporel agit comme un régulateur de performance efficace.
+En imposant une limite de temps ($t_b=10s$), on force l'éjection, ce qui purgent la file et réduit le temps de séjour moyen des requêtes servies à 7.69s (contre 9.98s sans barrage). C'est une stratégie qui sacrifie le taux de service pour garantir la fraîcheur de l'information traitée.
+
+\paragraph{4. Puissance Brute vs Fluidité Aval}
+La comparaison des paramètres des files confirme l'importance du flux de sortie.
+Doubler la capacité de sortie ($\mu_f=2.0 \to 6.63s$) offre un gain de performance légèrement supérieur à celui obtenu en doublant le nombre de serveurs d'entrée ($K=4 \to 6.74s$).
+
+
+\section{Analyse Spécifique : Facteurs d'Influence du Taux de Refus à l'Entrée}
+
+Cette section évalue la capacité d'admission du système, mesurée par le taux de rejet à l'entrée. Elle analyse comment la configuration des serveurs et les règles de gestion influencent la probabilité d'entrer dans le système.
+
+Le tableau ci-dessous présente un échantillon de 10 configurations (avec $k_s=10, k_f=5$) pour illustrer ces effets.
+
+\begin{table}[H]
+\centering
+\caption{Taux de Refus à l'Admission selon la Configuration}
+\label{tab:refusal_multi}
+\begin{tabular}{|c|c|c|c|c||c|}
+\hline
+Serveurs $K$ & Sortie $\mu_f$ & Barrage $t_b$ & Politique & Population & Taux Refus \\
+\hline
+2 & 1.0 & None & Fifo & ING & 37.9\% \\
+2 & 1.0 & None & Fifo & PREPA & 38.0\% \\
+\hline
+2 & 1.0 & None & Priority ING & ING & 37.2\% \\
+2 & 1.0 & None & Priority ING & PREPA & 36.9\% \\
+\hline
+2 & 1.0 & None & Split & ING & 50.2\% \\
+2 & 1.0 & None & Split & PREPA & 49.7\% \\
+\hline
+2 & 1.0 & 30.0s & Fifo & ING & 9.5\% \\
+2 & 1.0 & 10.0s & Fifo & ING & 4.7\% \\
+\hline
+4 & 1.0 & None & Fifo & ING & 1.8\% \\
+2 & 2.0 & None & Fifo & ING & 37.7\% \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Observations et Analyse d'Impact}
+
+\paragraph{1. L'effet du Split}
+La politique de partitionnement (\texttt{Split}) provoque un effondrement global de l'accessibilité. Le taux de refus bondit à environ 50\% pour les deux populations. En allouant un serveur dédié mais unique aux \textit{ING} (flux fort), on sature leur capacité de traitement, ce qui remplit intégralement la file d'attente commune ($k_s$). Résultat : les \textit{PREPA}, bien que disposant de leur propre serveur libre, ne peuvent plus entrer dans la file des \textit{ING}.
+
+\paragraph{2. L'Effet Paradoxal du Barrage}
+Le mécanisme de barrage temporel ($t_b$) améliore l'admission des nouvelles requêtes. Avec un timeout strict de 10s, le taux de refus chute à 4.7\% (contre 37.9\%). En éjectant systématiquement les requêtes qui stagnent trop longtemps, le système libère des places dans la file d'attente, permettant d'accepter un flux entrant plus important. 
+
+\paragraph{3. Découplage Aval/Amont}
+L'amélioration de la sortie est inefficace pour résoudre un problème d'entrée. Doubler la vitesse du canal d'envoi ($\mu_f=2.0$) ne réduit pas le taux de refus (37.7\% contre 37.9\%). Le goulot d'étranglement étant situé au niveau des serveurs d'exécution, fluidifier l'aval ne débloque pas la porte d'entrée.
+
+\paragraph{4. La Seule Solution Structurelle ($K$)}
+Seule l'augmentation de la capacité de traitement brute permet de garantir l'accès sans perte. Le passage à 4 serveurs ($K=4$) efface quasi-totalement les refus (1.8\%), car le débit de traitement des serveurs devient suffisant pour drainer la file d'attente plus vite qu'elle ne se remplit, rendant le système réellement absorbant.
+
+
+
+\section{Analyse Spécifique : Facteurs d'Influence des Pertes}
+
+Cette section évalue le taux de "Pages Blanches" . 
+
+Le tableau ci-dessous présente un échantillon de 7 configurations.
+
+\begin{table}[H]
+\centering
+\caption{Taux de Pages Blanches selon la Configuration}
+\label{tab:blanks_multi}
+\begin{tabular}{|c|c|c|c|c||c|}
+\hline
+Serveurs $K$ & Sortie $\mu_f$ & Barrage $t_b$ & Politique & Population & Page Blanche \\
+\hline
+2 & 1.0 & None & Fifo & ING & 56.4\% \\
+2 & 1.0 & None & Fifo & PREPA & 42.9\% \\
+\hline
+2 & 1.0 & None & Priority ING & ING & 56.1\% \\
+2 & 1.0 & None & Split & ING & 42.9\% \\
+\hline
+2 & 1.0 & 10.0s & Fifo & ING & 40.3\% \\
+\hline
+4 & 1.0 & None & Fifo & ING & 71.7\% \\
+2 & 2.0 & None & Fifo & ING & 22.6\% \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Observations et Analyse d'Impact}
+
+\paragraph{1. Le Piège de la Surcapacité ($K$)}
+L'augmentation du nombre de serveur est contre-productive si la sortie n'est pas dimensionnée en conséquence. Passer de 2 à 4 serveurs ($K=4$) fait bondir le taux de Pages Blanches de 56.4\% à 71.7\%. 
+
+\paragraph{2. La Seule Solution des Paramètres des Files ($\mu_f$)}
+Contrairement à l'admission qui dépend de $K$, l'apparition de Pages Blanches ne dépend que de la capacité d'évacuation $\mu_f$. Doubler la vitesse de sortie ($\mu_f=2.0$) divise le taux par plus de deux (22.6\%). C'est le seul levier technique capable d'assainir structurellement le flux et de limiter drastiquement les Pages Blanches.
+
+\paragraph{3. L'Effet Collatéral de la Restriction (Split/Barrage)}
+Les mécanismes qui restreignent l'accès ont un effet bénéfique  sur les Pages Blanches.
+\begin{itemize}
+    \item Le \texttt{Barrage} ($t_b=10$) réduit le taux de Pages Blanches à 40.3\%.
+    \item Le \texttt{Split} réduit le taux de Pages Blanches des ING à 42.9\%.
+\end{itemize}
+ Le système génère moins de Pages Blanches simplement parce qu'il est moins sollicité.
+
+\paragraph{4. Inefficacité de la Priorité}
+La politique \texttt{Priority ING} ne protège pas contre les Pages Blanches (56.1\% contre 56.4\% en Fifo). Si la priorité permet aux ING d'entrer plus vite , elle ne leur garantit aucun privilège à la sortie. Une fois acceptées, les requêtes se retrouvent bloquées dans le même goulot d'étranglement commun, subissant le même taux de transformation en Pages Blanches.
+
+
+
+\chapter{Recommandations Stratégiques}
+
+S'appuyant sur l'analyse quantitative approfondie des différents scénarios de simulation et prenant en compte les compromis identifiés entre capacité d'admission, fluidité du traitement et intégrité des résultats, nous formulons les recommandations stratégiques suivantes pour l'optimisation du système.
+
+
+\begin{table}[H]
+\centering
+\caption{Synthèse des Paramètres Optimaux (Basée sur les simulations)}
+\label{tab:recommandations}
+\begin{tabular}{|l|c|p{8cm}|}
+\hline
+\textbf{Paramètre} & \textbf{Cible / Plage} & \textbf{Justification Technique (Data)} \\
+\hline
+\textbf{Serveurs ($K$)} & $\ge 4$ & \textbf{Seuil d'accessibilité.} Réduit le taux de refus sous les 2\% en régime nominal. En dessous ($K=2$), le refus explose (>50\%) dès que $\lambda \ge 4$. \\
+\hline
+\textbf{Sortie ($\mu_f$)} & $\ge 2.0$ & \textbf{Ratio critique $\mu_f/K \approx 0.5$.} Indispensable pour drainer la production de 4 serveurs. À $\mu_f=1.0$, le taux de Page Blanche reste > 60\% même avec un bon $K$. \\
+\hline
+\textbf{Barrage ($t_b$)} & $10.0$ s & \textbf{Purge active.} Offre un meilleur taux d'acceptation (~99\%) que $t_b=30s$ (~97.8\%) en libérant les slots préventivement. \\
+\hline
+\textbf{Politique} & FIFO & \textbf{Équité structurelle.} Seule politique garantissant une latence homogène (~11s). Le \textit{Split} sacrifie inacceptablement les PREPA (latence > 35s). \\
+\hline
+\textbf{Backup} & Actif & \textbf{Filet de sécurité.} Maintient la perte définitive à 0\% même lorsque les pertes par saturation (Pages Blanches) dépassent 20\%. \\
+\hline
+\end{tabular}
+\end{table}
+
+\chapter{Conclusion}
+
+Pour garantir l'efficacité du système face aux charges futures, l'architecture doit impérativement basculer vers un modèle mutualisé et robuste. Les simulations valident sans ambiguïté la supériorité d'une configuration dimensionnée à $K=4$ serveurs avec un flux de sortie $\mu_f \ge 2.0$, pilotée par une politique FIFO stricte associée à une purge active ($t_b=10s$). Ce choix stratégique, couplé à un backup systématique, est le seul à même de concilier une latence maîtrisée, une équité totale entre filières et une sécurité absolue des données, rendant obsolètes les tentatives inefficaces de cloisonnement ou de priorisation complexe.
+
+
+
+
+\end{document}
